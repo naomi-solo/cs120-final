@@ -1,0 +1,279 @@
+---
+title: "CS120 Final Project"
+author: "Naomi Solomon"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Installation
+```{r}
+install.packages("dplyr")
+install.packages("tidyr")
+install.packages("caret")
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(readr)
+library(caret)
+
+```
+
+Data Loading
+```{r}
+#Load dataset
+file_path <- "liar_dataset/train.tsv"
+data <- read.delim(file_path, sep = "\t", header = TRUE, stringsAsFactors = FALSE)
+colnames(data) <- c("file_id", "truth_label", "claim", "topic", "untitled5", "untitled6", "untitled7", "political_affiliation", "untitled9", "untitled10", "untitled11", "untitled12", "untitled13", "untitled14")
+head(data)
+```
+Cleaning data
+```{r}
+
+data <- data %>%
+  select(file_id, truth_label, claim, topic, political_affiliation)
+
+data$truth_label <- tolower(trimws(data$truth_label))
+data$political_affiliation <- tolower(trimws(data$political_affiliation))
+
+
+# Filter data for rows where truth_label is "true" or "false"
+# and political_leaning is "democrat" or "republican"
+filtered_data <- data %>%
+  filter(truth_label %in% c("true", "false") &
+         political_affiliation %in% c("democrat", "republican") &
+         topic %in% c("health-care", "economy", "elections", "immigration", "environment"))
+
+```
+
+Filtering data by topic and picking claims that fit all criteria
+```{r}
+select_topic_data <- function(topic_name, n_true_democrat, n_false_democrat, n_true_republican, n_false_republican) {
+  topic_data <- filtered_data %>%
+    filter(topic == topic_name)
+  
+  true_democrat_rows <- topic_data %>%
+    filter(truth_label == "true") %>%
+    filter(political_affiliation == "democrat") %>%
+    sample_n(n_true_democrat)   
+  
+  false_democrat_rows <- topic_data %>%
+    filter(truth_label == "false") %>%
+    filter(political_affiliation == "democrat") %>%
+    sample_n(n_false_democrat)  
+  
+  true_republican_rows <- topic_data %>%
+    filter(truth_label == "true") %>%
+    filter(political_affiliation == "republican") %>%
+    sample_n(n_true_republican)   
+  
+  false_republican_rows <- topic_data %>%
+    filter(truth_label == "false") %>%
+    filter(political_affiliation == "republican") %>%
+    sample_n(n_false_republican)  
+  
+  selected_data <- bind_rows(true_democrat_rows, false_democrat_rows, true_republican_rows, false_republican_rows)
+  
+  return(selected_data)
+}
+
+final_data <- bind_rows(
+  select_topic_data("health-care", 2, 2, 2, 2),
+  select_topic_data("elections", 2, 2, 2, 2),
+  select_topic_data("immigration", 2, 2, 2, 2),
+)
+
+print(final_data)
+
+write.csv(final_data, "final_selected_data.csv", row.names = FALSE)
+```
+
+Inputting classification results for each model into results dataset
+```{r}
+results <- final_data
+
+results$GPT_Classification[1] <- "true"
+results$GPT_Classification[2] <- "true"
+results$GPT_Classification[3] <- "false"
+results$GPT_Classification[4] <- "false"
+results$GPT_Classification[5] <- "true"
+results$GPT_Classification[6] <- "true"
+results$GPT_Classification[7] <- "false"
+results$GPT_Classification[8] <- "true"
+results$GPT_Classification[9] <- "true"
+results$GPT_Classification[10] <- "true"
+results$GPT_Classification[11] <- "false"
+results$GPT_Classification[12] <- "true"
+results$GPT_Classification[13] <- "true"
+results$GPT_Classification[14] <- "false"
+results$GPT_Classification[15] <- "false"
+results$GPT_Classification[16] <- "false"
+results$GPT_Classification[17] <- "false"
+results$GPT_Classification[18] <- "true"
+results$GPT_Classification[19] <- "true"
+results$GPT_Classification[20] <- "false"
+results$GPT_Classification[21] <- "false"
+results$GPT_Classification[22] <- "true"
+results$GPT_Classification[23] <- "false"
+results$GPT_Classification[24] <- "false"
+
+results$Mistral_Classification[1] <- "false"
+results$Mistral_Classification[2] <- "true"
+results$Mistral_Classification[3] <- "true"
+results$Mistral_Classification[4] <- "false"
+results$Mistral_Classification[5] <- "false"
+results$Mistral_Classification[6] <- "true"
+results$Mistral_Classification[7] <- "false"
+results$Mistral_Classification[8] <- "false"
+results$Mistral_Classification[9] <- "true"
+results$Mistral_Classification[10] <- "false"
+results$Mistral_Classification[11] <- "false"
+results$Mistral_Classification[12] <- "false"
+results$Mistral_Classification[13] <- "false"
+results$Mistral_Classification[14] <- "false"
+results$Mistral_Classification[15] <- "false"
+results$Mistral_Classification[16] <- "false"
+results$Mistral_Classification[17] <- "true"
+results$Mistral_Classification[18] <- "false"
+results$Mistral_Classification[19] <- "false"
+results$Mistral_Classification[20] <- "false"
+results$Mistral_Classification[21] <- "true"
+results$Mistral_Classification[22] <- "false"
+results$Mistral_Classification[23] <- "false"
+results$Mistral_Classification[24] <- "false"
+
+results$Factinsect_Classification[1] <- "true"
+results$Factinsect_Classification[2] <- "true"
+results$Factinsect_Classification[3] <- "false"
+results$Factinsect_Classification[4] <- "false"
+results$Factinsect_Classification[5] <- "false"
+results$Factinsect_Classification[6] <- "true"
+results$Factinsect_Classification[7] <- "false"
+results$Factinsect_Classification[8] <- "false"
+results$Factinsect_Classification[9] <- "true"
+results$Factinsect_Classification[10] <- "true"
+results$Factinsect_Classification[11] <- "true"
+results$Factinsect_Classification[12] <- "true"
+results$Factinsect_Classification[13] <- "true"
+results$Factinsect_Classification[14] <- "true"
+results$Factinsect_Classification[15] <- "false"
+results$Factinsect_Classification[16] <- "false"
+results$Factinsect_Classification[17] <- "true"
+results$Factinsect_Classification[18] <- "true"
+results$Factinsect_Classification[19] <- "false"
+results$Factinsect_Classification[20] <- "false"
+results$Factinsect_Classification[21] <- "true"
+results$Factinsect_Classification[22] <- "false"
+results$Factinsect_Classification[23] <- "false"
+results$Factinsect_Classification[24] <- "false"
+
+results$Human_Classification[1] <- "true"
+results$Human_Classification[2] <- "true"
+results$Human_Classification[3] <- "false"
+results$Human_Classification[4] <- "true"
+results$Human_Classification[5] <- "true"
+results$Human_Classification[6] <- "true"
+results$Human_Classification[7] <- "false"
+results$Human_Classification[8] <- "false"
+results$Human_Classification[9] <- "true"
+results$Human_Classification[10] <- "true"
+results$Human_Classification[11] <- "true"
+results$Human_Classification[12] <- "true"
+results$Human_Classification[13] <- "true"
+results$Human_Classification[14] <- "false"
+results$Human_Classification[15] <- "false"
+results$Human_Classification[16] <- "true"
+results$Human_Classification[17] <- "true"
+results$Human_Classification[18] <- "false"
+results$Human_Classification[19] <- "false"
+results$Human_Classification[20] <- "false"
+results$Human_Classification[21] <- "false"
+results$Human_Classification[22] <- "true"
+results$Human_Classification[23] <- "false"
+results$Human_Classification[24] <- "false"
+
+
+
+```
+
+Data Analysis: Overall Accuracy and Accuracy by Topic
+```{r}
+glimpse(results)
+summary(results)
+sum(is.na(data))
+
+overall_accuracy <- results %>%
+  summarise(
+    GPT_Accuracy = mean(truth_label == GPT_Classification),
+    Mistral_Accuracy = mean(truth_label == Mistral_Classification),
+    Factinsect_Accuracy = mean(truth_label == Factinsect_Classification),
+    Human_Accuracy = mean(truth_label == Human_Classification)
+  )
+
+accuracy_by_topic <- results %>%
+  group_by(topic) %>%
+  summarise(
+    GPT_Accuracy = mean(truth_label == GPT_Classification),
+    Mistral_Accuracy = mean(truth_label == Mistral_Classification),
+    Factinsect_Accuracy = mean(truth_label == Factinsect_Classification),
+    Human_Accuracy = mean(truth_label == Human_Classification)
+  )
+
+print(accuracy_by_topic)
+print(overall_accuracy)
+```
+
+Data Analysis: Graphs
+```{r}
+accuracy_long <- accuracy_by_topic %>%
+  pivot_longer(cols = ends_with("_Accuracy"), 
+               names_to = "Model", 
+               values_to = "Accuracy") 
+
+# Bar plot
+ggplot(accuracy_long, aes(x = topic, y = Accuracy, fill = Model)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +
+  labs(title = "Accuracy by Topic for Each Model", 
+       x = "Topic", 
+       y = "Accuracy")
+
+
+ggplot(accuracy_long, aes(x = topic, y = Accuracy, color = Model, linetype = Model, group = Model)) +
+  geom_line(size = 1) +
+  geom_point(size = 3) +
+  theme_minimal() +
+  labs(title = "Accuracy Across Topics", 
+       x = "Topic", 
+       y = "Accuracy") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+Statistical Analysis
+```{r}
+# Reshape data for ANOVA
+anova_data <- results %>%
+  pivot_longer(cols = ends_with("_Classification"), 
+               names_to = "Model", 
+               values_to = "Classification") %>%
+  mutate(Correct = ifelse(Classification == truth_label, 1, 0))
+print(anova_data)
+
+
+# Perform the ANOVA considering Model, Topic, and Political Affiliation
+anova_results <- aov(Correct ~ Model + topic + political_affiliation + 
+                    Model:topic + Model:political_affiliation + topic:political_affiliation +
+                    Model:topic:political_affiliation, data = anova_data)
+
+# Display the ANOVA table
+summary(anova_results)
+
+```
+
